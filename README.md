@@ -1,48 +1,45 @@
-# 🔐 Secure Password Manager (Tkinter, AES, PBKDF2, Fernet)
 
-A desktop password manager with a clean Tkinter UI, **AES-encrypted JSON storage**, and **PBKDF2 key derivation**.  
-No external files needed — an encrypted vault (`passwords.json.enc`) is created on first run.  
-(Optional logo: `file.png.jpeg` in the same folder.)
+# Secure Password Manager (Tkinter, AES, PBKDF2, Fernet)
 
----
+## What This Implements
+A desktop password manager built in Python with a Tkinter UI that:
+- Locks the vault with a master password using PBKDF2 (SHA-256, 100k iterations).
+- Encrypts all credential data with Fernet (AES + HMAC) into a single file (`passwords.json.enc`).
+- Provides add/view/copy/delete, search, and show/hide actions for credentials.
+- Includes a password generator with a live strength meter.
 
-## 📦 Project Structure
+## Project Highlights
+- Self-contained application; the encrypted vault file is created on first run.
+- Key derivation via PBKDF2; distinct random salt stored at the start of the vault file.
+- Full-vault encryption using Fernet; decryption fails safely on wrong password or corruption.
+- Consistent theming and hover states; responsive search and scrollable list view.
+- Live password strength scoring (length, classes) with a six-segment visual bar.
 
-| File | Description |
-|:-----|:------------|
-| `password_manager.py` | Main Tkinter app (UI + crypto + storage). |
-| `passwords.json.enc`  | Encrypted vault (auto-created after first login). |
-| `file.png.jpeg`       | Optional logo shown on the login screen. |
+## Architecture and Workflow
 
-> Your script already bundles everything; no extra data files are required.
+### Security Path
+1. User enters master password.
+2. On first run, a random 16-byte salt is generated; otherwise read salt from the vault.
+3. Derive a 32-byte key with PBKDF2 (SHA-256, 100,000 iterations) and base64-encode for Fernet.
+4. Encrypt/decrypt the JSON payload with Fernet; the vault is `salt || ciphertext`.
 
----
+### Data Model
+- In-memory structure: `{ website: { "username": "...", "password": "..." }, ... }`.
+- On save, the entire structure is serialized to JSON and re-encrypted atomically.
 
-## ✨ Features
+### UI Flow
+1. Login screen (master password, show/hide toggle, optional logo).
+2. Vault screen with search bar, scrollable credential list, and actions:
+   - Show/Hide password, Copy to clipboard, Delete entry.
+   - Generate Password window with strength label; save directly into vault.
+3. Add Password form with live strength meter; save triggers full-vault re-encryption.
 
-- **Master password** lock with **PBKDF2 (SHA-256, 100k rounds)** → derives a 32-byte key.
-- **AES encryption via Fernet** (symmetric, authenticated) for the entire JSON vault.
-- **Add / View / Copy / Delete** credentials from a scrollable list.
-- **Search** by website or username (live filter).
-- **Show/Hide** password toggles.
-- **Password generator** with live **strength meter** (weak → very strong).
-- **Consistent theming** and button hover states.
+### Password Strength Heuristics
+- Score from 0 to 6: length thresholds (8, 12) and presence of lowercase, uppercase, digits, symbols.
+- Labels: Weak, Medium, Strong, Very Strong; mapped to six visual segments.
 
----
-
-## 🔐 Security Design
-
-- **Vault file:** `passwords.json.enc`  
-  - First **16 bytes**: randomly generated **salt**.  
-  - Remaining bytes: **Fernet ciphertext** of the JSON payload.
-- **Key derivation:** `PBKDF2(master_password, salt, dkLen=32, count=100_000, HMAC=SHA256)` → base64-url key for Fernet.
-- **Decryption path:** reads salt → derives key → decrypts JSON → loads credentials.
-
-> If the master password is wrong or the file is corrupted, the app shows an error and **refuses to decrypt**.
-
----
-
-## 🧰 Requirements
-
-```bash
-pip install pillow cryptography pycryptodome pyperclip
+## Results
+- The application maintains an encrypted, single-file vault that can only be opened with the correct master password.
+- Typical user actions (add, search, show/hide, copy, delete) are persisted immediately via authenticated encryption.
+- Generated passwords are assessed in real time; stronger suggestions are encouraged through the UI.
+- The system fails closed on incorrect credentials or tampering, avoiding partial or insecure reads of sensitive data.
